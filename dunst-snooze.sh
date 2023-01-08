@@ -2,12 +2,13 @@
 
 SCRIPT_DIR="$(dirname "$(readlink -f $0)")"
 TIMER_FILE="$SCRIPT_DIR/measure"
+HOOKS_DIR="$SCRIPT_DIR/hooks"
 PID_FILE="$SCRIPT_DIR/process.pid"
 # CURRENT_VALUE is representing the snooze time in minutes
 CURRENT_VALUE=$(test -e "$TIMER_FILE" && cat "$TIMER_FILE" || echo "0")
 PERVIOUS_VALUE="$CURRENT_VALUE"
 
-function is_paused {
+function is_paused_icon {
 	[ "$(dunstctl is-paused)" = "true" ] && echo "" || echo ""
 }
 
@@ -15,17 +16,46 @@ function log {
 	echo $@ >&2
 }
 
+#
+# Will call hooks, _if_ directory is present. Will call the script with one of
+# two possible flags:
+# * --pre <duration time in minutes>
+# * --post
+#
+function call_hooks {
+	local flag=$([ "$1" = "paused" ] && echo "--pre $CURRENT_VALUE" || echo "--post")
+	if [ -d "$HOOKS_DIR" ]; then
+		log "Found hooks dir, running hooks..."
+		for hook_script in "$HOOKS_DIR"/*; do
+			log "Running script: $hook_script with flag: \"$flag\""
+			bash -c "$hook_script $flag" >&2
+		done
+	fi
+}
+
+function set_paused {
+	local new_value="$1"
+	log "Set paused to: $new_value"
+	if [ "$new_value" = "true" ]; then
+		dunstctl set-paused true
+		call_hooks paused
+	else
+		dunstctl set-paused false
+		call_hooks unpaused
+	fi
+}
+
 function pause_for_time {
 	if [ "$CURRENT_VALUE" -lt 1 ]; then
-		dunstctl set-paused true &&
+		set_paused "true" &&
 			bash -c "$1" &
 	else
 		log "Pause for: $CURRENT_VALUE"
-		dunstctl set-paused true &&
+		set_paused "true" &&
 			bash -c "$1" &
 		sleep "$(expr "$CURRENT_VALUE" \* 60)" &
 		wait
-		dunstctl set-paused false
+		set_paused "false"
 	fi
 }
 
@@ -70,7 +100,7 @@ parse_command_line() {
 				echo "$$" >"$PID_FILE"
 
 				[ "$(dunstctl is-paused)" = "true" ] &&
-					dunstctl set-paused false ||
+					set_paused "false" ||
 					pause_for_time "$post_call"
 
 				bash -c "$post_call"
@@ -104,7 +134,7 @@ function main {
 
 	log "$TIMER_FILE - had value: $PERVIOUS_VALUE, now has: $CURRENT_VALUE"
 
-	echo "$(is_paused) $(format_timer "$CURRENT_VALUE")"
+	echo "$(is_paused_icon) $(format_timer "$CURRENT_VALUE")"
 }
 
 main "$@"
