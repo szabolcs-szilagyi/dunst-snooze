@@ -20,6 +20,7 @@ function pause_for_time {
 		dunstctl set-paused true &&
 			bash -c "$1" &
 	else
+		log "Pause for: $CURRENT_VALUE"
 		dunstctl set-paused true &&
 			bash -c "$1" &
 		sleep "$(expr "$CURRENT_VALUE" \* 60)" &
@@ -40,8 +41,8 @@ function format_timer {
 
 parse_command_line() {
 	ARGS=$(getopt \
-		-o t:ud \
-		--long toggle:,up,down \
+		-o t:udD: \
+		--long toggle:,up,down,duration: \
 		-- "$@")
 	getopt_exit="$?"
 
@@ -54,6 +55,13 @@ parse_command_line() {
 
 	for o; do
 		case "$o" in
+		-D | --duration)
+			if [ -n "${2:-}" ]; then
+				CURRENT_VALUE="${2}"
+				echo "$CURRENT_VALUE" >"$TIMER_FILE"
+				shift 2
+			fi
+			;;
 		-t | --toggle)
 			if [ -n "${2:-}" ]; then
 				local post_call="${2}"
