@@ -6,9 +6,7 @@ length of time.
 The script has the following flags:
 - =--up= :: increase the snooze time value
 - =--down= :: decrease the snooze time value
-- =--toggle <cmd>= :: activate/deactivate snooze, the command will be like a
-  callback function that will possibly be called multiple times, this is used to
-  trigger state update. See config below
+- =--toggle= :: activate/deactivate snooze
 
 #+begin_src conf
   [module/dunst-snooze]
@@ -17,5 +15,23 @@ The script has the following flags:
   initial = 1
   scroll-up = ~/<path to the file>/dunst-snooze.sh --up && polybar-msg action dunst-snooze next &
   scroll-down = ~/<path to the file>/dunst-snooze.sh --down && polybar-msg action dunst-snooze next &
-  click-left = ~/<path to the file>/dunst-snooze.sh --toggle 'polybar-msg action dunst-snooze next' &
+  click-left = ~/<path to the file>/dunst-snooze.sh --toggle
 #+end_src
+
+ATTENTION: For the =toggle= call you will have to add a hook also ensure that
+the file is executable!\\
+
+#+CAPTION: hooks/polybar.sh
+#+begin_src shell
+#!/usr/bin/env bash
+
+polybar-msg action dunst-snooze next
+#+end_src
+
+I know this isn't an optimal way to organize the polybar status update: for time
+adjustments we have it in the config, but for toggle it should be as a hook. I
+really wanted to keep it one place, but this passing a string for later
+execuation is really looking bad for me. :/
+
+Maybe later I'll add another hook type that is called after every run, so that
+every time we call the script it will update outside state.
