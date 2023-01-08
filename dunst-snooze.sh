@@ -47,12 +47,10 @@ function set_paused {
 
 function pause_for_time {
 	if [ "$CURRENT_VALUE" -lt 1 ]; then
-		set_paused "true" &&
-			bash -c "$1" &
+		set_paused "true"
 	else
 		log "Pause for: $CURRENT_VALUE"
-		set_paused "true" &&
-			bash -c "$1" &
+		set_paused "true"
 		sleep "$(expr "$CURRENT_VALUE" \* 60)" &
 		wait
 		set_paused "false"
@@ -71,8 +69,8 @@ function format_timer {
 
 parse_command_line() {
 	ARGS=$(getopt \
-		-o t:udD: \
-		--long toggle:,up,down,duration: \
+		-o tudD: \
+		--long toggle,up,down,duration: \
 		-- "$@")
 	getopt_exit="$?"
 
@@ -93,22 +91,16 @@ parse_command_line() {
 			fi
 			;;
 		-t | --toggle)
-			if [ -n "${2:-}" ]; then
-				local post_call="${2}"
-				[ -e "$PID_FILE" ] && kill -9 "$(cat $PID_FILE)"
-				log "pid file: $PID_FILE and pid is $$"
-				echo "$$" >"$PID_FILE"
+			[ -e "$PID_FILE" ] && kill -9 "$(cat $PID_FILE)"
+			log "pid file: $PID_FILE and pid is $$"
+			echo "$$" >"$PID_FILE"
 
-				[ "$(dunstctl is-paused)" = "true" ] &&
-					set_paused "false" ||
-					pause_for_time "$post_call"
+			[ "$(dunstctl is-paused)" = "true" ] &&
+				set_paused "false" ||
+				pause_for_time
 
-				bash -c "$post_call"
-				rm "$PID_FILE"
-				shift 2
-			else
-				shift 1
-			fi
+			rm "$PID_FILE"
+			shift 1
 			;;
 		-d | --down)
 			[ "$CURRENT_VALUE" -gt 0 ] &&
