@@ -67,7 +67,7 @@ function format_timer {
 		printf "%b:%02.f" "$hours" "$minutes"
 }
 
-parse_command_line() {
+function parse_command_line {
 	ARGS=$(getopt \
 		-o tudD: \
 		--long toggle,up,down,duration: \
